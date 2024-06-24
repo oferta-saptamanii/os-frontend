@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "964104260610",
+    "project_id": "oferta-saptamanii",
+    "storage_bucket": "oferta-saptamanii.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:964104260610:android:cca932e591929e802c6b1b",
+        "android_client_info": {
+          "package_name": "com.example.os_frontend"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDMJpXruafr0yG2ClBLaimhGdBDVYQSm7o"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

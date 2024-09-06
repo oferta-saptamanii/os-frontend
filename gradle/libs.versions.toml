@@ -14,6 +14,7 @@ navigationCompose = "2.7.7"
 googleGmsGoogleServices = "4.4.2"
 firebaseFirestore = "25.0.0"
 
+
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }
@@ -33,6 +34,12 @@ androidx-navigation-runtime-ktx = { group = "androidx.navigation", name = "navig
 androidx-navigation-compose = { group = "androidx.navigation", name = "navigation-compose", version.ref = "navigationCompose" }
 firebase-firestore = { group = "com.google.firebase", name = "firebase-firestore", version.ref = "firebaseFirestore" }
 coil-compose = { group = "io.coil-kt", name = "coil-compose", version.ref = "coil" }
+gms-google-services = { group = "com.google.gms", name = "google-services", version.ref = "googleGmsGoogleServices" }
+room-runtime = { group = "androidx.room", name = "room-runtime", version = "2.6.1" }
+room-compiler = { group = "androidx.room", name = "room-compiler", version = "2.6.1" }
+room-ktx = { group = "androidx.room", name = "room-ktx", version = "2.6.1" }
+canopas-bottom-bar = { group = "com.canopas.compose-animated-navigationbar", name = "bottombar", version = "1.0.1" }
+
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

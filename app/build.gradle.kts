@@ -3,6 +3,7 @@ plugins {
     alias(libs.plugins.jetbrains.kotlin.android)
     alias(libs.plugins.relay)
     alias(libs.plugins.google.gms.google.services)
+    kotlin("kapt")
 }
 
 android {
@@ -52,6 +53,17 @@ android {
 }
 
 dependencies {
+
+    // nav bar animated custom
+    implementation(libs.canopas.bottom.bar)
+
+
+
+    // ar trebui sa schimb din kapt in ksp pe viitor, momentan da eroare daca fac asta
+    kapt(libs.room.compiler)
+    implementation(libs.room.runtime)
+    implementation(libs.room.ktx)
+    implementation(libs.gms.google.services)
     implementation(libs.coil.compose)
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)

@@ -3,7 +3,7 @@ agp = "8.5.0"
 kotlin = "1.9.0"
 coreKtx = "1.10.1"
 junit = "4.13.2"
-coil = "2.1.0"
+coil = "2.6.0"
 junitVersion = "1.1.5"
 espressoCore = "3.5.1"
 lifecycleRuntimeKtx = "2.6.1"
@@ -13,6 +13,12 @@ navigationRuntimeKtx = "2.7.7"
 navigationCompose = "2.7.7"
 googleGmsGoogleServices = "4.4.2"
 firebaseFirestore = "25.0.0"
+hiltAndroidCompiler = "2.51.1"
+hilt = "2.51.1"
+navigation-hilt-compose = "1.2.0"
+koinBom = "3.5.5"
+splashScreen = "1.0.1"
+bouquet = "1.1.2"
 
 
 [libraries]
@@ -40,10 +46,11 @@ room-compiler = { group = "androidx.room", name = "room-compiler", version = "2.
 room-ktx = { group = "androidx.room", name = "room-ktx", version = "2.6.1" }
 canopas-bottom-bar = { group = "com.canopas.compose-animated-navigationbar", name = "bottombar", version = "1.0.1" }
 
+androidx-core-splashscreen = { module = "androidx.core:core-splashscreen", version.ref = "splashScreen" }
+bouquet = { module = "io.github.grizzi91:bouquet", version.ref = "bouquet" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
 jetbrains-kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 relay = { id= "com.google.relay", version = "0.3.12" }
 google-gms-google-services = { id = "com.google.gms.google-services", version.ref = "googleGmsGoogleServices" }
-

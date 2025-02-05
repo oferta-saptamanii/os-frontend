@@ -2,73 +2,86 @@ package com.example.os_frontend.screens.cart
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.os_frontend.firestore.Product
+import com.example.os_frontend.firestore.product.Product
+import kotlinx.coroutines.Dispatchers
 
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 
-data class CartItem(val product: Product, val quantity: Int)
 
-class CartViewModel : ViewModel() {
+class CartViewModel(private val cartDao: CartDao) : ViewModel() {
 
     private val _cartItems = MutableStateFlow<List<CartItem>>(emptyList())
     val cartItems: StateFlow<List<CartItem>> = _cartItems
 
+    init {
+
+        loadCartItems()
+    }
+
+    private fun loadCartItems() {
+        viewModelScope.launch(Dispatchers.IO) {
+            val items = cartDao.getAllCartItems()
+            _cartItems.value = items
+        }
+    }
+
     fun addToCart(product: Product) {
         viewModelScope.launch {
-            val updatedCart = _cartItems.value.toMutableList()
-            val existingCartItem = updatedCart.find { it.product == product }
+            val existingCartItem = _cartItems.value.find { it.productId == product.id }
             if(existingCartItem != null){
-                updatedCart[updatedCart.indexOf(existingCartItem)] =
-                    existingCartItem.copy(quantity = existingCartItem.quantity + 1)
+                val updatedItem = existingCartItem.copy(
+                    quantity = existingCartItem.quantity + 1
+                )
+                cartDao.updateCartItem(updatedItem)
             } else {
-                updatedCart.add(CartItem(product, 1))
+                val newItem = CartItem(
+                    productId = product.id,
+                    name = product.FullTitle,
+                    image = product.Image,
+                    price = (product.CurrentPrice ?: 0).toString(),
+                    quantity = 1,
+                    storeName = product.StoreName?: ""
+                )
+                cartDao.insertCartItem(newItem)
             }
-            _cartItems.value = updatedCart
+            loadCartItems()
         }
     }
 
-    fun removeFromCartByOne(product: Product) {
+    fun removeFromCart(cartItem: CartItem) {
         viewModelScope.launch {
-            val updatedCart = _cartItems.value.toMutableList()
-            val existingCartItem = updatedCart.find { it.product == product }
-            if (existingCartItem != null){
-                if(existingCartItem.quantity > 1){
-                    updatedCart[updatedCart.indexOf(existingCartItem)] =
-                        existingCartItem.copy(quantity = existingCartItem.quantity - 1)
-                } else {
-                    updatedCart.remove(existingCartItem)
-                }
-            }
-            _cartItems.value = updatedCart
+            cartDao.deleteCartItem(cartItem)
+            loadCartItems()
         }
     }
 
-    fun removeFromCart(product: Product){
-        viewModelScope.launch{
-            val updatedCart = _cartItems.value.toMutableList()
-            val existingCartItem = updatedCart.find { it.product == product }
-            if(existingCartItem != null){
-                updatedCart.remove(existingCartItem)
-            }
-            _cartItems.value = updatedCart
-        }
-    }
-
-    fun calculateTotalPrice(): Float {
-        var totalPrice = 0f
-        _cartItems.value.forEach { cartItem ->
-            val price = cartItem.product.CurrentPrice?.toFloatOrNull() ?: 0f
-            val quantity = cartItem.quantity.toFloat()
-            totalPrice += price * quantity
-        }
-        return totalPrice
-    }
 
     fun removeAllCartItems() {
         viewModelScope.launch {
-            _cartItems.value = emptyList()
+            cartDao.clearCart()
+            loadCartItems()
+        }
+    }
+
+    fun decreaseQuantity(cartItem: CartItem) {
+        viewModelScope.launch {
+            if (cartItem.quantity > 1) {
+                val updatedItem = cartItem.copy(quantity = cartItem.quantity - 1)
+                cartDao.updateCartItem(updatedItem)
+                loadCartItems()
+            } else {
+                removeFromCart(cartItem)
+            }
+        }
+    }
+
+    fun increaseQuantity(cartItem: CartItem) {
+        viewModelScope.launch {
+            val updatedItem = cartItem.copy(quantity = cartItem.quantity + 1)
+            cartDao.updateCartItem(updatedItem)
+            loadCartItems()
         }
     }
 }

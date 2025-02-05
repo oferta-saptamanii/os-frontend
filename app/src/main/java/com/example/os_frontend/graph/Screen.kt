@@ -9,12 +9,13 @@ sealed class Screen(val route: String) {
     data object MegaImage : Screen ("MegaImage")
     data object Auchan : Screen ("Auchan")
     data object Profi : Screen ("Profi")
+    data object Aggregated : Screen ("Aggregated")
 }
 
 sealed class BottomNavigationItemScreen(val route: String){
-    data object First : BottomNavigationItemScreen(route = "firstScreen")
-    data object Second : BottomNavigationItemScreen(route = "secondScreen")
-    data object Third : BottomNavigationItemScreen(route = "thirdScreen")
-    data object Fourth : BottomNavigationItemScreen(route = "fourthScreen")
-    data object Fifth : BottomNavigationItemScreen(route = "fifthScreen")
+    data object First : BottomNavigationItemScreen(route = "firstscreen")
+    data object Second : BottomNavigationItemScreen(route = "secondscreen")
+    data object Third : BottomNavigationItemScreen(route = "thirdscreen")
+    data object Fourth : BottomNavigationItemScreen(route = "fourthscreen")
+    data object Fifth : BottomNavigationItemScreen(route = "fifthscreen")
 }

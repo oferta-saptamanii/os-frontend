@@ -57,14 +57,22 @@ dependencies {
     // nav bar animated custom
     implementation(libs.canopas.bottom.bar)
 
-
+    //coil
+    implementation(libs.coil.compose)
 
     // ar trebui sa schimb din kapt in ksp pe viitor, momentan da eroare daca fac asta
     kapt(libs.room.compiler)
+
+    implementation(libs.androidx.core.splashscreen)
+
+    implementation(libs.bouquet)
+
+
+
+
     implementation(libs.room.runtime)
     implementation(libs.room.ktx)
     implementation(libs.gms.google.services)
-    implementation(libs.coil.compose)
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)

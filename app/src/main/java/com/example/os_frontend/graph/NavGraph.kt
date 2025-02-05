@@ -1,248 +1,266 @@
 package com.example.os_frontend.graph
 
 import android.annotation.SuppressLint
+import android.content.Context
+import android.net.Uri
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.navigation.NavController
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
-import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
-import com.example.os_frontend.AnimNavigationBar
+import androidx.navigation.navigation
 import com.example.os_frontend.NavigationBar
-import com.example.os_frontend.account.Account
-import com.example.os_frontend.screens.FirstScreen
-import com.example.os_frontend.screens.FourthScreen
-import com.example.os_frontend.screens.cart.CartItem
-import com.example.os_frontend.screens.explore.SecondScreen
+import com.example.os_frontend.firestore.DatabaseProvider
+import com.example.os_frontend.screens.cart.CartScreen
 import com.example.os_frontend.screens.cart.CartViewModel
-import com.example.os_frontend.screens.cart.ThirdScreen
-import com.example.os_frontend.screens.explore.MyTopAppBar
-import com.example.os_frontend.screens.explore.stores.AuchanScreen
-import com.example.os_frontend.screens.explore.stores.KauflandScreen
-import com.example.os_frontend.screens.explore.stores.LidlScreen
-import com.example.os_frontend.screens.explore.stores.MegaImageScreen
-import com.example.os_frontend.screens.explore.stores.PennyScreen
-import com.example.os_frontend.screens.explore.stores.ProductsScreen
-import com.example.os_frontend.screens.explore.stores.ProductsScreenforKaufland
-import com.example.os_frontend.screens.explore.stores.ProfiScreen
+import com.example.os_frontend.screens.catalogs.CatalogPDF
+import com.example.os_frontend.screens.catalogs.CatalogsScreen
+import com.example.os_frontend.screens.catalogs.StoresScreen
+import com.example.os_frontend.screens.catalogs.onboarding.OnBoardingScreen
+import com.example.os_frontend.screens.explore.ProductsScreen
+import com.example.os_frontend.screens.explore.StoreScreen
+import com.example.os_frontend.screens.explore.products.AuchanScreen
+import com.example.os_frontend.screens.explore.products.KauflandScreen
+import com.example.os_frontend.screens.explore.products.LidlScreen
+import com.example.os_frontend.screens.explore.products.MegaImageScreen
+import com.example.os_frontend.screens.explore.products.PennyScreen
+import com.example.os_frontend.screens.explore.products.ProductViewModel
+import com.example.os_frontend.screens.explore.products.ProductsScreenforKaufland
+import com.example.os_frontend.screens.explore.products.ProfiScreen
+import com.example.os_frontend.screens.search.SearchScreen
+import com.example.os_frontend.screens.shop.ShopScreen
 
-import com.example.os_frontend.screens.explore.stores.StoreScreen
-import com.google.relay.compose.ColumnScopeInstanceImpl.weight
 
-
+@OptIn(ExperimentalMaterial3Api::class)
 @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
 @Composable
-fun SetupNavGraph(navController: NavHostController) {
-    val cartViewModel: CartViewModel = viewModel()
+fun SetupNavGraph(navController: NavHostController, context: Context) {
+    val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
+
+    val cartDao = DatabaseProvider.provideCartDao(context)
+    val cartViewModel = CartViewModel(cartDao)
+
     Scaffold(
+        modifier = Modifier
+            .fillMaxSize()
+            .nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
             val currentBackStackEntry by navController.currentBackStackEntryAsState()
-            val showTopAppBar = currentBackStackEntry?.destination?.route != BottomNavigationItemScreen.First.route &&
-                    currentBackStackEntry?.destination?.route != BottomNavigationItemScreen.Second.route &&
-                    currentBackStackEntry?.destination?.route != BottomNavigationItemScreen.Third.route &&
-                    currentBackStackEntry?.destination?.route != BottomNavigationItemScreen.Fourth.route
 
-            if (showTopAppBar) {
-                MyTopAppBar(navController = navController)
+            val currentRoute = currentBackStackEntry?.destination?.route
+            val excludedRoutes = listOf(
+                BottomNavigationItemScreen.First.route,
+                BottomNavigationItemScreen.Second.route,
+                BottomNavigationItemScreen.Third.route,
+                BottomNavigationItemScreen.Fourth.route,
+                BottomNavigationItemScreen.Fifth.route,
+                "onboarding_screen/{storeName}"
+            )
+
+            if (currentRoute !in excludedRoutes) {
+                val title = when {
+                    currentRoute?.startsWith("products") == true -> {
+                        currentBackStackEntry?.arguments?.getString("categoryName") ?: "Products"
+                    }
+                    currentRoute?.startsWith("categories") == true -> {
+                        currentBackStackEntry?.arguments?.getString("OffersDev") ?: "Categories"
+                    }
+                    else -> ""
+                }
+
+
+                TopAppBar(
+                    title = {
+                        Text(
+                            text = title,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                            },
+                    navigationIcon = {
+                        if (navController.previousBackStackEntry != null) {
+                            IconButton(onClick = { navController.navigateUp() }) {
+                                Icon(
+                                    imageVector = Icons.Filled.ArrowBack,
+                                    contentDescription = "Back"
+                                )
+                            }
+                        }
+                    },
+                    scrollBehavior = scrollBehavior
+                )
             }
         },
         bottomBar = {
-            AnimNavigationBar(navController = navController)
+            NavigationBar(navController = navController, cartViewModel = cartViewModel)
         },
     ) { innerPadding ->
         NavHost(
             navController = navController,
-            startDestination = BottomNavigationItemScreen.First.route,
-            modifier = Modifier.padding(bottom = 56.dp)
+            startDestination = Graph.MAIN,
+            modifier = Modifier.padding(innerPadding)
         ) {
-            composable(BottomNavigationItemScreen.First.route) {
-                FirstScreen(navController, cartViewModel)
-            }
-            composable(BottomNavigationItemScreen.Second.route) {
-                SecondScreen(navController)
-            }
-
-
-
-
-            // explore section
-
-            composable(Screen.Lidl.route) {
-                LidlScreen(navController)
-            }
-            composable(Screen.Kaufland.route){
-                KauflandScreen(navController)
-            }
-            composable(Screen.Auchan.route){
-                AuchanScreen(navController)
-            }
-            composable(Screen.Penny.route){
-                PennyScreen(navController)
-            }
-            composable(Screen.Profi.route){
-                ProfiScreen(navController)
-            }
-            composable(Screen.MegaImage.route){
-                MegaImageScreen(navController)
-            }
-            composable(
-                route = "products/{storeName}/{categoryName}",
-                arguments = listOf(
-                    navArgument("storeName") { type = NavType.StringType },
-                    navArgument("categoryName") { type = NavType.StringType }
-                )
-            ) { backStackEntry ->
-                val storeName = backStackEntry.arguments?.getString("storeName") ?: ""
-                val categoryName = backStackEntry.arguments?.getString("categoryName") ?: ""
-
-                when (storeName) {
-                    "Kaufland" -> {
-                        ProductsScreenforKaufland(
-                            navController = navController,
-                            categoryName = categoryName,
-                            cartViewModel = cartViewModel
-                        )
-                    }
-                    else -> {
-                        ProductsScreen(
-                            storeName = storeName,
-                            navController = navController,
-                            categoryName = categoryName,
-                            cartViewModel = cartViewModel
-                        )
-                    }
-                }
-            }
-
-
-
-
-
-
-
-
-
-
-
-
-            composable(BottomNavigationItemScreen.Third.route) {
-                ThirdScreen(cartViewModel = cartViewModel)
-            }
-            composable(BottomNavigationItemScreen.Fourth.route) {
-                FourthScreen()
-            }
-            composable(BottomNavigationItemScreen.Fifth.route){
-                Account()
-            }
+            mainNavGraph(navController, context, cartViewModel)
         }
     }
 }
 
 
-//@SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
-//@Composable
-//fun SetupNavGraph(navController: NavHostController) {
-//    val cartViewModel: CartViewModel = viewModel()
-//   Column{
-//       NavHost(
-//           navController = navController,
-//        //   route = Graph.MAIN,
-//           startDestination = BottomNavigationItemScreen.First.route,
-//           modifier = Modifier.weight(1f)
-//       ){
-//           composable(BottomNavigationItemScreen.First.route){
-//               FirstScreen(navController, cartViewModel)
-//           }
-//           composable(BottomNavigationItemScreen.Second.route){
-//               SecondScreen(navController)
-//           }
-//
-//
-//           // lidl
-////           composable(Screen.Lidl.route){
-////               Lidl(navController)
-////           }
-////           composable(
-////               route = "products/{categoryName}",
-////               arguments = listOf(navArgument("categoryName") { type = NavType.StringType })
-////           ) { backStackEntry ->
-////               val categoryName = backStackEntry.arguments?.getString("categoryName")
-////               ProductsScreen(navController = navController, categoryName = categoryName ?: "", cartViewModel)
-////           }
-//
-//           composable(Screen.Lidl.route) {
-//               Scaffold(
-//                   topBar = { MyTopAppBar(navController = navController) },
-//                   modifier = Modifier.weight(1f)
-//               ) {
-//                   Lidl(navController = navController)
-//               }
-//           }
-//           composable(
-//               route = "products/{categoryName}",
-//               arguments = listOf(navArgument("categoryName") { type = NavType.StringType })
-//           ) { backStackEntry ->
-//               val categoryName = backStackEntry.arguments?.getString("categoryName")
-//               Scaffold(
-//                   topBar = { MyTopAppBar(navController = navController) },
-//                   modifier = Modifier.weight(1f),
-//               ) {
-//                   ProductsScreen(navController = navController, categoryName = categoryName ?: ""
-//                       , cartViewModel)
-//               }
-//           }
-//
-//
-//
-//           composable(BottomNavigationItemScreen.Third.route){
-//               ThirdScreen(cartViewModel = cartViewModel)
-//           }
-//           composable(BottomNavigationItemScreen.Fourth.route){
-//               FourthScreen()
-//           }
-//       }
-//       NavigationBar(navController = navController, cartViewModel)
-//   }
-//}
+fun NavGraphBuilder.mainNavGraph(
+    navController: NavHostController,
+    context: Context,
+    cartViewModel: CartViewModel
+) {
+    val productDao = DatabaseProvider.provideProductDao(context)
+    val productViewModel = ProductViewModel(productDao)
 
-/*
-fun NavGraphBuilder.detailsNavGraph() {
     navigation(
-        route = Graph.DETAILS,
-        startDestination = Screen.Details.route
+        startDestination = BottomNavigationItemScreen.First.route,
+        route = Graph.MAIN
     ) {
+
+
+
+        // Other screens
+        composable(BottomNavigationItemScreen.First.route) {
+            ShopScreen(navController, cartViewModel, productViewModel)
+        }
+        composable(BottomNavigationItemScreen.Second.route){
+            SearchScreen(productViewModel = productViewModel, cartViewModel = cartViewModel)
+        }
+        composable(BottomNavigationItemScreen.Third.route) {
+            StoreScreen(navController, productViewModel)
+        }
+
+        // Explore Section
+        composable(Screen.Lidl.route) {
+            LidlScreen(navController)
+        }
+        composable(Screen.Kaufland.route) {
+            KauflandScreen(navController)
+        }
+        composable(Screen.Auchan.route) {
+            AuchanScreen(navController)
+        }
+        composable(Screen.Penny.route) {
+            PennyScreen(navController)
+        }
+        composable(Screen.Profi.route) {
+            ProfiScreen(navController)
+        }
+        composable(Screen.MegaImage.route) {
+            MegaImageScreen(navController)
+        }
         composable(
-            route = Screen.Details.route,
-            arguments = listOf(navArgument(PRODUCT_ARGUMENT_KEY) {
-                type = NavType.IntType
-            })
-        ) {
-            DetailScreen()
+            route = "products/{storeName}/{categoryName}",
+            arguments = listOf(
+                navArgument("storeName") { type = NavType.StringType },
+                navArgument("categoryName") { type = NavType.StringType }
+            )
+        ) { backStackEntry ->
+            val storeName = backStackEntry.arguments?.getString("storeName") ?: ""
+            val categoryName = backStackEntry.arguments?.getString("categoryName") ?: ""
+
+            when (storeName) {
+                "Kaufland" -> {
+                    ProductsScreenforKaufland(
+                        navController = navController,
+                        categoryName = categoryName,
+                        cartViewModel = cartViewModel,
+                        productViewModel = productViewModel
+                    )
+                }
+                else -> {
+                    ProductsScreen(
+                        storeName = storeName,
+                        navController = navController,
+                        categoryName = categoryName,
+                        cartViewModel = cartViewModel,
+                        productViewModel = productViewModel
+                    )
+                }
+            }
         }
-    }
-} */
 
-/*
-fun NavGraphBuilder.searchNavGraph() {
-    navigation(
-        route = Graph.SEARCH,
-        startDestination = Screen.Search.route
-    ) {
-        composable(route = Screen.Search.route) {
-            SearchScreen()
+        composable(
+            route = "products/{categoryName}",
+            arguments = listOf(
+                navArgument("categoryName") { type = NavType.StringType }
+            )
+        ) { backStackEntry ->
+            val categoryName = backStackEntry.arguments?.getString("categoryName") ?: ""
+
+            ProductsScreen(
+                storeName = "Aggregated",
+                navController = navController,
+                categoryName = categoryName,
+                cartViewModel = cartViewModel,
+                productViewModel = productViewModel
+            )
         }
+
+
+        composable(BottomNavigationItemScreen.Fourth.route) {
+            CartScreen(cartViewModel = cartViewModel)
+        }
+        composable(BottomNavigationItemScreen.Fifth.route){
+            StoresScreen(navController)
+        }
+        composable(
+            route = "onboarding_screen/{storeName}",
+            arguments = listOf(navArgument("storeName") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val storeName = backStackEntry.arguments?.getString("storeName") ?: ""
+            OnBoardingScreen(storeName, navController)
+        }
+
+        composable(
+            route = "catalogs/{storeName}/{city}/{store}",
+            arguments = listOf(navArgument("storeName") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val storeName = backStackEntry.arguments?.getString("storeName") ?: ""
+            val cityName = backStackEntry.arguments?.getString("city") ?: ""
+            val store = backStackEntry.arguments?.getString("store") ?: ""
+
+            CatalogsScreen(
+                storeName = storeName,
+                city = cityName,
+                store = store,
+                navController = navController
+            )
+        }
+        composable(
+            route = "catalog_pdf/{url}",
+            arguments = listOf(navArgument("url") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val url = Uri.decode(backStackEntry.arguments?.getString("url") ?: "")
+            CatalogPDF(url = url)
+        }
+
     }
-}*/
+}
 
 
+
+object Graph {
+    const val SPLASH = "splash_graph"
+    const val MAIN = "main_graph"
+}

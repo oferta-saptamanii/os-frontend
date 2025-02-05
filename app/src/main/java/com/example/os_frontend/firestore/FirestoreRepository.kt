@@ -3,20 +3,16 @@ package com.example.os_frontend.firestore
 import android.content.Context
 import android.util.Log
 import androidx.room.Room
+import com.example.os_frontend.firestore.category.Category
+import com.example.os_frontend.firestore.product.Product
+import com.example.os_frontend.firestore.store.Store
+import com.example.os_frontend.screens.catalogs.Catalog
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.FirebaseFirestoreSettings
-import com.google.firebase.firestore.firestoreSettings
-import com.google.firebase.firestore.memoryCacheSettings
-import com.google.firebase.firestore.persistentCacheSettings
-import com.google.firebase.firestore.toObject
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
 
-data class Subcategory(val name: String, val products: List<Product>)
-data class AggregatedCategory(val name: String, val subcategories: List<Subcategory>)
 
 class FirestoreRepository(context: Context) {
 
@@ -28,141 +24,127 @@ class FirestoreRepository(context: Context) {
         .fallbackToDestructiveMigration()
         .build()
 
+
     init {
         val settings = FirebaseFirestoreSettings.Builder()
             .setPersistenceEnabled(true)
             .build()
         db.firestoreSettings = settings
+
     }
 
-    suspend fun resetDatabase() = withContext(Dispatchers.IO){
-        roomDb.clearAllTables()
-    }
 
-    suspend fun fetchAllProducts(): List<Product> = withContext(Dispatchers.IO) {
-        val products = roomDb.productDao().getAllProducts()
-        if (products.isNotEmpty()) {
-            return@withContext products
-        } else {
+    suspend fun fetchAll(): List<Store> = withContext(Dispatchers.IO) {
+        val storeList = mutableListOf<Store>()
 
-            val productList = mutableListOf<Product>()
-            val storesSnapshot = db.collection("Stores").get().await()
+        try {
+            val storesSnapshot = db.collection("OffersDev").get().await()
             for (storeDocument in storesSnapshot.documents) {
                 val storeName = storeDocument.id
-                val categoriesSnapshot = db.collection("Stores/$storeName/categories").get().await()
+                val store = Store(name = storeName)
+
+                val categoriesSnapshot = db.collection("OffersDev/$storeName/categories").get().await()
+                val categoryList = mutableListOf<Category>()
+
                 for (categoryDocument in categoriesSnapshot.documents) {
                     val categoryName = categoryDocument.id
+                    val productImg = categoryDocument.getString("ProductImg") ?: ""
+                    val category = Category(name = categoryName, ProductImg = productImg, storeName = storeName)
+
                     val productsSnapshot = db.collection("OffersDev/$storeName/categories/$categoryName/products").get().await()
-                    val categoryProducts = productsSnapshot.documents.mapNotNull { document ->
+                    val productList = productsSnapshot.documents.mapNotNull { document ->
                         document.toObject(Product::class.java)?.apply {
                             this.Category = categoryName
                         }
                     }
-                    productList.addAll(categoryProducts)
+                    categoryList.add(category)
+                    roomDb.productDao().insertProducts(productList)
                 }
+                storeList.add(store)
+                roomDb.categoryDao().insertCategories(categoryList)
             }
-            roomDb.productDao().insertProducts(productList)
-            return@withContext productList
+
+            roomDb.storeDao().insertStores(storeList)
+
+        } catch (e: Exception) {
+            Log.e("Firestore", "Error fetching data: ${e.message}")
+        }
+        
+        return@withContext storeList
+    }
+
+    suspend fun hasLocalData(): Boolean {
+        return withContext(Dispatchers.IO) {
+            val productCount = roomDb.productDao().getProductCount()
+            productCount > 0
         }
     }
 
 
 
-    suspend fun fetchProducts(storeName: String, categoryName: String): List<Product> = withContext(Dispatchers.IO) {
-
-        val existingProducts = roomDb.productDao().getProductsByCategory(categoryName)
-        if (existingProducts.isNotEmpty()) {
-            Log.d("firestore", "a intrat in iful in care se verifica daca lista e goala or not")
-            return@withContext existingProducts
-        } else {
-
-            val productsPath = "OffersDev/$storeName/categories/$categoryName/products"
-            try {
-                val querySnapshot = db.collection(productsPath).get().await()
-                val products = querySnapshot.documents.mapNotNull { document ->
-                    document.toObject(Product::class.java)?.apply {
-                        this.Category = categoryName
-                    }
-                }
-                roomDb.productDao().insertProducts(products)
-
-                val categoryId = roomDb.categoryDao().getCategoryIdByName(categoryName)
-                if (categoryId != null) {
-                    val crossRefs = products.map { product ->
-                        CategoryProductCrossRef(categoryId, product.id)
-                    }
-                    roomDb.categoryProductCrossRefDao().insertCategoryProductCrossRefs(crossRefs)
-                }
-
-                return@withContext products
-            } catch (e: Exception) {
-                Log.e("Firestore", "Error fetching products", e)
-                emptyList()
-            }
-        }
+    suspend fun fetchProducts(categoryName: String): List<Product> = withContext(Dispatchers.IO) {
+        return@withContext roomDb.productDao().getProductsByCategory(categoryName)
     }
-
 
     suspend fun fetchCategories(storeName: String): List<Category> = withContext(Dispatchers.IO) {
+        return@withContext roomDb.categoryDao().getCategoriesByStore(storeName)
+    }
 
-        val existingCategories = roomDb.categoryDao().getCategoriesByStore(storeName)
-        if (existingCategories.isNotEmpty()) {
-            return@withContext existingCategories
-        } else {
-            val categoriesPath = "OffersDev/$storeName/categories"
-            try {
-                val querySnapshot = db.collection(categoriesPath).get().await()
-                val categories = querySnapshot.documents.mapNotNull { document ->
-                    val categoryName = document.id
-                    val productImg = document.getString("ProductImg") ?: ""
-                    Category(name = categoryName, ProductImg = productImg, storeName = storeName)
-                }
+    suspend fun fetchStores(): List<Store> = withContext(Dispatchers.IO) {
+        return@withContext roomDb.storeDao().getAllStores()
+    }
 
-                roomDb.categoryDao().insertCategories(categories)
+    suspend fun fetchAllProducts(): List<Product> = withContext(Dispatchers.IO){
+        return@withContext roomDb.productDao().getAllProducts()
+    }
 
+    suspend fun fetchDiscountedProducts(): List<Product> = withContext(Dispatchers.IO){
+        return@withContext roomDb.productDao().getTopDiscountedProducts()
+    }
 
-                val storeId = roomDb.storeDao().getStoreIdByName(storeName)
-                if (storeId != null) {
+    suspend fun fetchLimitedStock(): List<Product> = withContext(Dispatchers.IO){
+        return@withContext roomDb.productDao().getLimitedStockProducts()
+    }
 
-                    val storeCategoryCrossRefs = categories.map { category ->
-                        StoreCategoryCrossRef(storeId, category.id)
-                    }
-                    roomDb.storeCategoryCrossRefDao().insertStoreCategoryCrossRefs(storeCategoryCrossRefs)
-                }
+    suspend fun fetchRandomProducts(): List<Product> = withContext(Dispatchers.IO){
+        return@withContext roomDb.productDao().getRandomProducts()
+    }
 
-                return@withContext categories
-            } catch (e: Exception) {
-                Log.e("Firestore", "Error fetching categories", e)
-                emptyList()
+    // catalogs
+
+    suspend fun fetchCatalogs(storeName: String, city: String, store: String): List<Catalog> = withContext(Dispatchers.IO){
+        val catalogPath =  "Catalogs/$storeName/cities/$city/stores/$store/catalogs"
+        return@withContext try {
+            val querySnapshot = db.collection(catalogPath).get().await()
+            querySnapshot.documents.map { document ->
+                document.toObject(Catalog::class.java) ?: Catalog()
             }
+        } catch (e: Exception) {
+            Log.e("Firestore", "Error fetching data: ${e.message}")
+            emptyList()
         }
     }
 
 
+    suspend fun fetchCities(storeName: String): List<String> = withContext(Dispatchers.IO) {
+        try {
+            val citiesPath = "Catalogs/$storeName/cities"
+            val querySnapshot = db.collection(citiesPath).get().await()
+            querySnapshot.documents.map { it.id }
+        } catch (e: Exception) {
+            Log.e("Firestore", "Error fetching cities: ${e.message}")
+            emptyList()
+        }
+    }
 
-
-    suspend fun fetchStores(): List<Store> = withContext(Dispatchers.IO) {
-
-        val stores = roomDb.storeDao().getAllStores()
-        if (stores.isNotEmpty()) {
-            return@withContext stores
-        } else {
-
-            val storesPath = "OffersDev"
-            try {
-                val querySnapshot = db.collection(storesPath).get().await()
-                val storesList = querySnapshot.documents.mapNotNull { document ->
-
-                    val storeName = document.id
-                    Store(name = storeName)
-                }
-                roomDb.storeDao().insertStores(storesList)
-
-                return@withContext storesList
-            } catch (e: Exception) {
-                Log.e("Firestore", "Error fetching stores", e)
-                emptyList()
-            }
+    suspend fun fetchStoresInCity(storeName: String, city: String): List<String> = withContext(Dispatchers.IO) {
+        try {
+            val storesPath = "Catalogs/$storeName/cities/$city/stores"
+            val querySnapshot = db.collection(storesPath).get().await()
+            querySnapshot.documents.map { it.id }
+        } catch (e: Exception) {
+            Log.e("Firestore", "Error fetching stores in city: ${e.message}")
+            emptyList()
         }
     }
 
